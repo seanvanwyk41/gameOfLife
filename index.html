@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+        <meta content="utf-8" http-equiv="encoding">
+        <title>Game of Life</title>
+    </head>
+    <style>
+        .flex-container {
+            display: flex;
+            flex-wrap: nowrap;
+            height: 85vh;
+        }
+
+        .flex-container > div {
+            background-color: #f1f1f1;
+            width: 100%;
+            height: 100%;
+            margin: 5px;
+            text-align: center;
+            line-height: 75px;
+        }
+        
+        .gameBoard {
+            height: 100%;
+            border: 5px solid black;
+            background-color: white;
+            border-collapse: collapse;
+        }
+
+
+        .gameTdDead {
+            height: 100px;
+            width: 100px;
+            padding: 0; 
+            margin: 0;
+            border: 5px solid black;
+            background-color: white;
+        }
+
+        .gameTdLive {
+            height: 100px;
+            width: 100px;
+            padding: 0; 
+            margin: 0;
+            border: 5px solid black;
+            background-color: black;
+        }
+
+    </style>
+    <body>
+        <h1 style="height: 4vh;">Game of Life</h1>
+        <div class="flex-container">
+            <div style="width:10%;height:100%">
+                <div><button id="stepButton" type="button">Next Generation!</button></div>
+                <div>
+                    <text>Grid Size</text>
+                    <input type="number" id="sizeInput" min=1 default=10>
+                    <button id="reset" type="button">reset</button>
+                </div>
+                
+                
+            </div>
+            <div style="width:90%;height:100%">
+                <div id="game">
+                </div>
+            </div>
+        </div>
+        <script src="https://unpkg.com/@panzoom/panzoom@4.4.3/dist/panzoom.min.js"></script>
+        <script>
+            let cells
+            let size = 10
+
+            // Table Generator
+            function populateTable(table, rows, cellNum, content) {
+                if (!table) table = document.createElement('table', {class:'gameBoard'});
+                table.className = 'gameBoard'
+                for (var i = 0; i < rows; ++i) {
+                    var row = document.createElement('tr', {class:'gameTr'});
+                    for (var j = 0; j < cellNum; ++j) {
+                        let cell = document.createElement('td')
+                        cell.setAttribute('row', i)
+                        cell.setAttribute('column', j)
+                        cell.addEventListener("click",  flipCell)
+                        row.appendChild(cell);
+                    }
+                    table.appendChild(row);
+                }
+                return table;
+            }
+
+            function renderTable() {
+                let domTable = populateTable(null, cells.length, cells.length, "")
+                domTable = setCells(domTable, cells)
+                document.getElementById('game').innerHTML = '';
+                document.getElementById('game').appendChild(domTable);
+            }
+
+            function setCells(table, cellList) {
+                for(i in cellList) {
+                    for(j in cellList[i]) {
+                        if(cellList[i][j] == 1) table.rows[i].cells[j].className = "gameTdLive";
+                        else table.rows[i].cells[j].className = "gameTdDead";
+                    }
+                }
+                return table
+            }
+            
+            function resizeBoard() {
+                size = document.getElementById('sizeInput').value
+                createNewBoard()
+                renderTable()
+            }
+
+            function createNewBoard() {
+                let newCells = []
+                for(let i = 0; i < size; i++) {
+                    newCells.push([])
+                    for(let j = 0; j < size; j++){
+                        newCells[i].push(0)
+                    }
+                }
+                console.log(newCells)
+                cells = newCells
+            }
+            
+            // Calculate rules of Conway's game of life
+            function step() {
+                console.log(cells)
+                var newTable = cells.map(function(arr) {
+                    return arr.slice();
+                });
+                for(i in cells) {
+                    for(j in cells[i]) {
+                        let cell = cells[i][j]
+                        let count = countAdjacentCells(cells, i, j)
+                        if((cell == 1 && count > 1 && count < 4) || cell == 0 && count == 3) newTable[i][j] = 1
+                        else  newTable[i][j] = 0
+
+                    }
+                }
+                cells = newTable
+                renderTable()
+            }
+        
+            function countAdjacentCells(table, row, column) {
+                row = parseInt(row)
+                column =  parseInt(column)
+                let count = 0;
+                let size = table.length
+                let leftEdge = column == 0
+                let rightEdge = column == size -1
+                let topEdge = row == 0
+                let bottomEdge = row == size -1
+                if(!leftEdge) count += parseInt(table[row][column -1])
+                if(!rightEdge) count += parseInt(table[row][column +1])
+                if(!topEdge) count += parseInt(table[row - 1][column])
+                if(!bottomEdge) count += parseInt(table[row + 1][column])
+                if(!leftEdge && !topEdge) count += parseInt(table[row - 1][column -1])
+                if(!leftEdge && !bottomEdge) count += parseInt(table[row + 1][column -1])
+                if(!rightEdge && !topEdge) count += parseInt(table[row - 1][column + 1])
+                if(!rightEdge && !bottomEdge) count += parseInt(table[row + 1][column + 1])
+                return count
+            }
+
+            function flipCell(evt){
+                let row = evt.currentTarget.getAttribute('row', i)
+                let column = evt.currentTarget.getAttribute('column', j)
+                console.log(cells, row, column)
+                if(cells[row][column] == 0) cells[row][column] = 1
+                else cells[row][column] = 0
+                renderTable()
+            }
+
+            // Initialization state script
+            createNewBoard()
+            document.getElementById('sizeInput').value = size
+            let domTable = populateTable(null,  cells.length,  cells.length, "")
+            domTable = setCells(domTable, cells)
+            document.getElementById('game').appendChild(domTable);
+
+            // zoom and pan script
+            const elem = document.getElementById('game')
+            const panzoom = Panzoom(elem, { canvas: true, autocenter: true})
+            elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
+
+
+            // Map buttons to functions
+            document.getElementById('reset').addEventListener("click", resizeBoard)
+            document.getElementById('stepButton').addEventListener("click", step)
+        </script>
+    </body>
+
+</html> 
